@@ -1,3 +1,4 @@
+
 ---
 title: Flutter into native android
 publishDate: 10 Jun 2025
@@ -45,7 +46,7 @@ git submodule add https://github.com/your-org/flutter_module.git flutter-module
 
 We included the Flutter module in the native project’s `settings.gradle`:
 
-```groovy
+```
 setBinding(new Binding([gradle: this]))
 evaluate(new File(
   settingsDir.parentFile,
@@ -55,7 +56,7 @@ evaluate(new File(
 
 Then, in `app/build.gradle`:
 
-```groovy
+```
 implementation project(':flutter')
 ```
 
@@ -63,7 +64,7 @@ implementation project(':flutter')
 
 To preload the Flutter engine and avoid delays during navigation, we initialized it in the `Application` class:
 
-```kotlin
+```
 class MyApplication : Application() {
     lateinit var flutterEngine: FlutterEngine
 
@@ -89,7 +90,7 @@ To handle token passing and other shared data, we used a `MethodChannel`.  Make 
 
 **Native Side (Kotlin):**
 
-```kotlin
+```
 MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.channel.shared.data")
     .setMethodCallHandler { call, result ->
         when (call.method) {
@@ -104,7 +105,7 @@ MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.channel.shared.da
 
 **Flutter Side (Dart):**
 
-```dart
+```
 const platform = MethodChannel('app.channel.shared.data');
 
 Future<String?> getToken() async {
@@ -122,7 +123,7 @@ Future<String?> getToken() async {
 
 To keep theming consistent between native and Flutter, we passed theme data via initial route arguments or platform channel, and used `ThemeData` in Flutter to match the native app’s color scheme and typography.
 
-```dart
+```
 final themeData = ThemeData(
   primaryColor: Color(0xFF6200EE), // match native theme
   fontFamily: 'Roboto',
