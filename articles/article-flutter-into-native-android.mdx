@@ -1,0 +1,129 @@
+# Integrating Flutter into a Native Android App (Kotlin) with Git Submodule
+
+In a recent project, I integrated a Flutter module into an existing Android app written in Kotlin. Instead of rewriting the app or creating a monolithic hybrid, the goal was to embed Flutter in specific parts of the native app for rapid UI development and cross-platform support. In this article, I’ll walk through how we structured the integration, shared data like tokens and headers, and maintained a consistent theme between native and Flutter layers.
+
+## Project Structure and Approach
+
+We decided to create the Flutter module as a **separate project** and included it in the main Android app as a **Git submodule**. This separation allowed:
+
+- Independent development and testing of the Flutter module.
+- Reusability of the Flutter module in other projects.
+- Cleaner version control and collaboration between native and Flutter developers.
+
+### Directory Structure (Simplified)
+
+```
+/native-android-app
+  /app
+  /flutter-module (Git submodule)
+```
+
+## Adding Flutter to the Native App
+
+### 1. Creating the Flutter Module
+
+We generated the Flutter module using:
+
+```bash
+flutter create --template module flutter_module
+```
+
+This created the `flutter_module` directory which we then pushed to a separate Git repo and added back to the main project as a submodule:
+
+```bash
+git submodule add https://github.com/your-org/flutter_module.git flutter-module
+```
+
+### 2. Integrating Flutter in Android Project
+
+We included the Flutter module in the native project’s `settings.gradle`:
+
+```groovy
+setBinding(new Binding([gradle: this]))
+evaluate(new File(
+  settingsDir.parentFile,
+  'flutter-module/.android/include_flutter.groovy'
+))
+```
+
+Then, in `app/build.gradle`:
+
+```groovy
+implementation project(':flutter')
+```
+
+### 3. Initializing Flutter Engine
+
+To preload the Flutter engine and avoid delays during navigation, we initialized it in the `Application` class:
+
+```kotlin
+class MyApplication : Application() {
+    lateinit var flutterEngine: FlutterEngine
+
+    override fun onCreate() {
+        super.onCreate()
+
+        flutterEngine = FlutterEngine(this).apply {
+            dartExecutor.executeDartEntrypoint(
+                DartExecutor.DartEntrypoint.createDefault()
+            )
+        }
+
+        FlutterEngineCache
+            .getInstance()
+            .put("my_engine_id", flutterEngine)
+    }
+}
+```
+
+### 4. Setting Up Platform Channel Communication
+
+To handle token passing and other shared data, we used a `MethodChannel`.  Make sure to set up and initialise along with engine
+
+**Native Side (Kotlin):**
+
+```kotlin
+MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "app.channel.shared.data")
+    .setMethodCallHandler { call, result ->
+        when (call.method) {
+            "getToken" -> {
+                val token = getTokenFromNativeStorage()
+                result.success(token)
+            }
+            else -> result.notImplemented()
+        }
+    }
+```
+
+**Flutter Side (Dart):**
+
+```dart
+const platform = MethodChannel('app.channel.shared.data');
+
+Future<String?> getToken() async {
+  try {
+    final String? token = await platform.invokeMethod('getToken');
+    return token;
+  } catch (e) {
+    print("Failed to get token: $e");
+    return null;
+  }
+}
+```
+
+### 5. Theme Synchronization
+
+To keep theming consistent between native and Flutter, we passed theme data via initial route arguments or platform channel, and used `ThemeData` in Flutter to match the native app’s color scheme and typography.
+
+```dart
+final themeData = ThemeData(
+  primaryColor: Color(0xFF6200EE), // match native theme
+  fontFamily: 'Roboto',
+);
+```
+
+## Conclusion
+
+This modular approach made it easier to integrate Flutter into an existing Android app with minimal disruption. Using a Git submodule allows us to keep the Flutter codebase decoupled yet synchronized, while platform channels help bridge native and Dart logic seamlessly.
+
+If you're considering adding Flutter to a native app, this strategy strikes a good balance between maintainability and performance.
