@@ -1,0 +1,709 @@
+---
+title: Flutter project clean architecture
+publishDate: 24 Jul 2025
+tags: ["flutter", "clean-architecture", "modular-architecture", "testing", "flutter-riverpod"]
+description: A step-by-step guide on how to implement a clean architecture with a modular approach in a Flutter project using Riverpod.
+---
+
+# Flutter Clean Architecture with Modular Approach
+
+## Project Structure
+
+
+```text
+lib/
+  ├── modules/
+  ├── services/
+  │   ├── listing/
+  │   │   ├── domain/
+  │   │   │   ├── entities/
+  │   │   │   │   └── service.dart
+  │   │   │   ├── usecases/
+  │   │   │   │   ├── get_services.dart
+  │   │   │   │   └── select_service.dart
+  │   │   │   └── repositories/
+  │   │   │       └── service_repository.dart
+  │   │   ├── data/
+  │   │   │   ├── models/
+  │   │   │   │   ├── service_response.dart
+  │   │   │   │   └── service_request.dart
+  │   │   │   ├── repositories/
+  │   │   │   │   └── service_repository_impl.dart
+  │   │   │   └── datasources/
+  │   │   │       └── service_api.dart
+  │   │   ├── presentation/
+  │   │   │   ├── pages/
+  │   │   │   │   └── service_list_page.dart
+  │   │   │   ├── widgets/
+  │   │   │   │   └── service_card.dart
+  │   │   │   ├── controllers/
+  │   │   │   │   └── service_list_controller.dart
+  │   │   │   └── models/
+  │   │   │       ├── service_list_page_params.dart
+  │   │   │       └── service_list_page_data.dart
+  │   │   └── listing_module.dart
+  │   ├── details/
+  │   │   ├── domain/
+  │   │   │   ├── entities/
+  │   │   │   │   └── service_details.dart
+  │   │   │   ├── usecases/
+  │   │   │   │   ├── get_service_details.dart
+  │   │   │   │   └── get_service_reviews.dart
+  │   │   │   └── repositories/
+  │   │   │       └── service_details_repository.dart
+  │   │   ├── data/
+  │   │   │   ├── models/
+  │   │   │   │   ├── service_details_response.dart
+  │   │   │   │   └── service_details_request.dart
+  │   │   │   ├── repositories/
+  │   │   │   │   └── service_details_repository_impl.dart
+  │   │   │   └── datasources/
+  │   │   │       └── service_details_api.dart
+  │   │   ├── presentation/
+  │   │   │   ├── pages/
+  │   │   │   │   └── service_details_page.dart
+  │   │   │   ├── widgets/
+  │   │   │   │   ├── service_details_card.dart
+  │   │   │   │   └── service_reviews_widget.dart
+  │   │   │   ├── controllers/
+  │   │   │   │   └── service_details_controller.dart
+  │   │   │   └── models/
+  │   │   │       ├── service_details_params.dart
+  │   │   │       └── service_details_data.dart
+  │   │   └── details_module.dart
+  │   ├── slot/
+  │   │   ├── domain/
+  │   │   │   ├── entities/
+  │   │   │   │   └── slot.dart
+  │   │   │   ├── usecases/
+  │   │   │   │   ├── get_available_slots.dart
+  │   │   │   │   ├── select_slot.dart
+  │   │   │   │   └── reserve_slot.dart
+  │   │   │   └── repositories/
+  │   │   │       └── slot_repository.dart
+  │   │   ├── data/
+  │   │   │   ├── models/
+  │   │   │   │   ├── slot_response.dart
+  │   │   │   │   └── slot_request.dart
+  │   │   │   ├── repositories/
+  │   │   │   │   └── slot_repository_impl.dart
+  │   │   │   └── datasources/
+  │   │   │       └── slot_api.dart
+  │   │   ├── presentation/
+  │   │   │   ├── pages/
+  │   │   │   │   └── slot_selection_page.dart
+  │   │   │   ├── widgets/
+  │   │   │   │   ├── slot_calendar.dart
+  │   │   │   │   └── slot_card.dart
+  │   │   │   ├── controllers/
+  │   │   │   │   └── slot_selection_controller.dart
+  │   │   │   └── models/
+  │   │   │       ├── slot_selection_params.dart
+  │   │   │       └── slot_selection_data.dart
+  │   │   └── slot_module.dart
+  │   └── services_module.dart
+  └── core/
+      ├── domain/
+      │   ├── entities/
+      │   │   ├── user.dart
+      │   └── usecases/
+      │   │   └── get_user.dart
+      │   └── repositories/
+      │       └── user_repository.dart
+      ├── data/
+      │   ├── models/
+      │   │   ├── user_response.dart
+      │   │   └── user_request.dart
+      │   ├── repositories/
+      │   │   └── user_repository_impl.dart
+      │   └── datasources/
+      │       └── user_api.dart
+      ├── presentation/
+      │   ├── widgets/
+      │   │   ├── loading_widget.dart
+      │   │   ├── error_widget.dart
+      │   │   └── custom_button.dart
+      │   └── models/
+      │       └── error_data.dart
+      └── core_module.dart
+```
+
+## Implementation Example: Services Listing Module
+
+### Domain Layer
+
+```dart
+// modules/services/listing/domain/entities/service.dart
+class Service {
+  final String id;
+  final String name;
+  final String description;
+  final double price;
+  final String category;
+  final String imageUrl;
+  final int duration;
+  final bool isAvailable;
+  
+  Service({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.category,
+    required this.imageUrl,
+    required this.duration,
+    this.isAvailable = true,
+  });
+  
+  // Business logic
+  bool get isExpensive => price > 100;
+  bool get canBeBooked => isAvailable && price > 0;
+}
+```
+
+```dart
+// modules/services/listing/domain/repositories/service_repository.dart
+abstract class ServiceRepository {
+  Future<List<Service>> getServices({String? category, String? searchQuery});
+  Future<List<Service>> searchServices(String query);
+  Future<List<String>> getCategories();
+}
+```
+
+```dart
+// modules/services/listing/domain/usecases/get_services.dart
+class GetServices {
+  final ServiceRepository _repository;
+  
+  GetServices(this._repository);
+  
+  Future<List<Service>> execute({String? category, String? searchQuery, bool showOnlyAvailable = true}) async {
+    // Business logic validation
+    if (searchQuery != null && searchQuery.length < 2) {
+      throw ValidationException('Search query must be at least 2 characters');
+    }
+    
+    // Call repository
+    final services = await _repository.getServices(category: category, searchQuery: searchQuery);
+    
+    // Business logic - filter if needed
+    if (showOnlyAvailable) {
+      return services.where((service) => service.isAvailable).toList();
+    }
+    
+    return services;
+  }
+}
+
+// Provider in the same file
+@riverpod
+GetServices getServices(GetServicesRef ref) {
+  return GetServices(ref.read(serviceRepositoryProvider));
+}
+```
+
+```dart
+// modules/services/listing/domain/usecases/select_service.dart
+class SelectService {
+  Future<void> execute(Service service) async {
+    // Business logic validation
+    if (!service.isAvailable) {
+      throw ValidationException('Cannot select unavailable service');
+    }
+    
+    // Business logic - check business hours
+    final now = DateTime.now();
+    final isBusinessHours = now.hour >= 8 && now.hour <= 20;
+    
+    if (!isBusinessHours) {
+      throw ValidationException('Services can only be selected during business hours (8 AM - 8 PM)');
+    }
+  }
+}
+
+// Provider in the same file
+@riverpod
+SelectService selectService(SelectServiceRef ref) {
+  return SelectService();
+}
+```
+
+### Data Layer
+
+```dart
+// modules/services/listing/data/models/service_response.dart
+class ServiceResponse {
+  final String id;
+  final String name;
+  final String description;
+  final double price;
+  final String category;
+  final String image_url;
+  final int duration;
+  final bool is_available;
+  
+  ServiceResponse({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.category,
+    required this.image_url,
+    required this.duration,
+    required this.is_available,
+  });
+  
+  factory ServiceResponse.fromJson(Map<String, dynamic> json) {
+    return ServiceResponse(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      price: json['price'].toDouble(),
+      category: json['category'],
+      image_url: json['image_url'],
+      duration: json['duration'],
+      is_available: json['is_available'] ?? true,
+    );
+  }
+  
+  // Convert to domain entity
+  Service toEntity() {
+    return Service(
+      id: id,
+      name: name,
+      description: description,
+      price: price,
+      category: category,
+      imageUrl: image_url,
+      duration: duration,
+      isAvailable: is_available,
+    );
+  }
+}
+```
+
+```dart
+// modules/services/listing/data/datasources/service_api.dart
+class ServiceApi {
+  final ApiClient _apiClient;
+  
+  ServiceApi(this._apiClient);
+  
+  Future<List<ServiceResponse>> getServices(ServiceRequest request) async {
+    try {
+      final response = await _apiClient.get('/services', 
+        queryParams: request.toJson()
+      );
+      return (response['data'] as List)
+          .map((json) => ServiceResponse.fromJson(json))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to load services: $e');
+    }
+  }
+}
+
+// Provider in the same file
+@riverpod
+ServiceApi serviceApi(ServiceApiRef ref) {
+  return ServiceApi(ref.read(apiClientProvider));
+}
+```
+
+```dart
+// modules/services/listing/data/repositories/service_repository_impl.dart
+class ServiceRepositoryImpl implements ServiceRepository {
+  final ServiceApi _api;
+  
+  ServiceRepositoryImpl(this._api);
+  
+  @override
+  Future<List<Service>> getServices({String? category, String? searchQuery}) async {
+    try {
+      final request = ServiceRequest(
+        category: category,
+        searchQuery: searchQuery,
+        showOnlyAvailable: true,
+      );
+      
+      final responses = await _api.getServices(request);
+      
+      // Transform to domain models
+      return responses.map((response) => response.toEntity()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  @override
+  Future<List<Service>> searchServices(String query) async {
+    try {
+      final responses = await _api.searchServices(query);
+      return responses.map((response) => response.toEntity()).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+  
+  @override
+  Future<List<String>> getCategories() async {
+    try {
+      final services = await getServices();
+      return services.map((s) => s.category).toSet().toList();
+    } catch (e) {
+      return [];
+    }
+  }
+}
+
+// Provider in the same file
+@riverpod
+ServiceRepository serviceRepository(ServiceRepositoryRef ref) {
+  return ServiceRepositoryImpl(ref.read(serviceApiProvider));
+}
+```
+
+### Presentation Layer
+
+```dart
+// modules/services/listing/presentation/controllers/service_list_controller.dart
+@riverpod
+class ServiceListController extends _$ServiceListController {
+  @override
+  FutureOr<ServiceListPageData> build() async {
+    return await _loadServices();
+  }
+  
+  Future<ServiceListPageData> _loadServices() async {
+    final useCase = ref.read(getServicesProvider);
+    final services = await useCase.execute();
+    
+    // Transform domain models to UI data
+    return _transformToPageData(services);
+  }
+  
+  Future<void> loadServices(ServiceListPageParams params) async {
+    state = const AsyncValue.loading();
+    
+    try {
+      final useCase = ref.read(getServicesProvider);
+      final services = await useCase.execute(
+        category: params.category,
+        searchQuery: params.searchQuery,
+        showOnlyAvailable: params.showOnlyAvailable,
+      );
+      
+      final pageData = _transformToPageData(services);
+      state = AsyncValue.data(pageData);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+  
+  Future<void> selectService(ServiceItemData service) async {
+    try {
+      // Convert UI data back to domain model for use case
+      final domainService = Service(
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        category: service.category,
+        imageUrl: service.imageUrl,
+        duration: service.duration,
+        isAvailable: service.isAvailable,
+      );
+      
+      final useCase = ref.read(selectServiceProvider);
+      await useCase.execute(domainService);
+      
+      // If validation passes, store selected service
+      ref.read(selectedServiceProvider.notifier).state = service;
+    } catch (error, stackTrace) {
+      if (error is ValidationException) {
+        print('Validation error: ${error.message}');
+      } else {
+        state = AsyncValue.error(error, stackTrace);
+      }
+    }
+  }
+  
+  // Helper method to transform domain models to UI data
+  ServiceListPageData _transformToPageData(List<Service> services) {
+    final serviceItems = services.map((service) {
+      return ServiceItemData(
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        category: service.category,
+        imageUrl: service.imageUrl,
+        duration: service.duration,
+        isAvailable: service.isAvailable,
+      );
+    }).toList();
+    
+    return ServiceListPageData(
+      services: serviceItems,
+      categories: services.map((s) => s.category).toSet().toList(),
+      hasMoreData: false,
+    );
+  }
+}
+
+// Provider in the same file
+@riverpod
+ServiceListController serviceListController(ServiceListControllerRef ref) {
+  return ServiceListController();
+}
+
+@riverpod
+class SelectedServiceNotifier extends _$SelectedServiceNotifier {
+  @override
+  ServiceItemData? build() => null;
+  
+  void select(ServiceItemData service) {
+    state = service;
+  }
+  
+  void clear() {
+    state = null;
+  }
+}
+```
+
+```dart
+// modules/services/listing/presentation/pages/service_list_page.dart
+class ServiceListPage extends ConsumerWidget {
+  const ServiceListPage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final serviceListState = ref.watch(serviceListControllerProvider);
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Available Services'),
+      ),
+      body: serviceListState.when(
+        data: (pageData) => pageData.services.isEmpty
+            ? const Center(child: Text('No services available'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: pageData.services.length,
+                itemBuilder: (context, index) {
+                  final service = pageData.services[index];
+                  return ServiceCard(
+                    service: service,
+                    onTap: () => _selectService(context, ref, service),
+                  );
+                },
+              ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Text('Error: $error'),
+        ),
+      ),
+    );
+  }
+  
+  void _selectService(BuildContext context, WidgetRef ref, ServiceItemData service) {
+    ref.read(serviceListControllerProvider.notifier).selectService(service);
+    Navigator.pushNamed(context, '/services/slot-selection');
+  }
+}
+```
+
+```dart
+// modules/services/listing/presentation/widgets/service_card.dart
+class ServiceCard extends StatelessWidget {
+  final ServiceItemData service;
+  final VoidCallback onTap;
+  
+  const ServiceCard({
+    required this.service,
+    required this.onTap,
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: service.isAvailable ? onTap : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  service.imageUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 80,
+                      height: 80,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      service.name,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      service.description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          '\$${service.price.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${service.duration} min',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (!service.isAvailable)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red[100],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Unavailable',
+                    style: TextStyle(color: Colors.red[700], fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+## Module Export
+
+```dart
+// modules/services/listing/listing_module.dart
+// Export all listing module components
+export 'domain/entities/service.dart';
+export 'domain/usecases/get_services.dart';
+export 'domain/usecases/select_service.dart';
+export 'domain/repositories/service_repository.dart';
+export 'data/models/service_response.dart';
+export 'data/models/service_request.dart';
+export 'data/repositories/service_repository_impl.dart';
+export 'data/datasources/service_api.dart';
+export 'presentation/pages/service_list_page.dart';
+export 'presentation/widgets/service_card.dart';
+export 'presentation/controllers/service_list_controller.dart';
+export 'presentation/models/service_list_page_params.dart';
+export 'presentation/models/service_list_page_data.dart';
+```
+
+## Key Benefits
+
+1. **Clean Architecture**: Clear separation of concerns with domain, data, and presentation layers
+2. **Modular Design**: Each feature is self-contained and can be developed independently
+3. **Testability**: Each layer can be tested in isolation
+4. **Scalability**: Easy to add new features following the same pattern
+5. **Maintainability**: Clear file organization makes it easy to find and modify code
+6. **Reusability**: Domain logic can be reused across different UI layers
+
+## Testing in Flutter - File Organization
+
+### **Standard Approach: Separate `test/` Directory**
+
+```text
+lib/
+├── modules/services/listing/
+│   ├── domain/usecases/get_services.dart
+│   └── ...
+test/
+├── unit/
+│   ├── modules/services/listing/
+│   │   ├── domain/usecases/get_services_test.dart
+│   │   ├── domain/usecases/select_service_test.dart
+│   │   └── domain/repositories/service_repository_test.d
+│   ├── modules/services/slot/
+│   │   ├── domain/usecases/get_available_slots_test.dart
+│   │   └── domain/usecases/select_slot_test.dart
+│   └── modules/shared/
+│       └── domain/entities/user_test.dart
+├── widget/
+│   ├── modules/services/listing/
+│   │   ├── presentation/pages/service_list_page_test.dar
+│   │   ├── presentation/widgets/service_card_test.dart
+│   │   └── presentation/controllers/service_list_controller_test.dart
+│   ├── modules/services/slot/
+│   │   ├── presentation/pages/slot_selection_page_test.dart
+│   │   └── presentation/widgets/slot_calendar_test.dart
+│   └── modules/shared/
+│       └── presentation/widgets/loading_widget_test.dart
+├── integration/
+│   ├── service_booking_flow_test.dart
+│   ├── slot_selection_flow_test.dart
+│   └── user_authentication_flow_test.dart
+└── helpers/
+    ├── test_helpers.dart
+    ├── mock_data.dart
+    └── test_widgets.dart
+```
+
+### **Test Types Explained**
+
+#### **Unit Tests** (`test/unit/`)
+
+- **Purpose**: Test individual functions, classes, or methods in isolation
+- **Scope**: Single file or class
+- **Speed**: Fastest
+- **Examples**: Use cases, repositories, entities, services
+
+#### **Widget Tests** (`test/widget/`)
+
+- **Purpose**: Test UI components and widgets
+- **Scope**: Individual widgets or pages
+- **Speed**: Medium
+- **Examples**: Pages, widgets, controllers
+
+#### **Integration Tests** (`test/integration/`)
+
+- **Purpose**: Test complete user flows and feature interactions
+- **Scope**: Multiple screens and features
+- **Speed**: Slowest
+- **Examples**: Complete booking flow, authentication flow
+
+#### **Test Helpers** (`test/helpers/`)
+
+- **Purpose**: Shared test utilities, mocks, and common setup
+- **Scope**: Reusable across all test types
+- **Examples**: Mock data, test utilities, common test widgets
